@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand: #FFD700;
+  --color-brand-dark: #E6BE00;
+  --color-bg: #0a0a0a;
+  --color-card: #1a1a1a;
+  --color-card-hover: #252525;
+}
+
+:root {
+  --brand: #FFD700;
+}
+
+body {
+  background: #0a0a0a;
+  color: #f5f5f5;
+  font-family: system-ui, -apple-system, sans-serif;
+}
