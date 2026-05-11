@@ -6,8 +6,8 @@
 insert into restaurants (id, slug, name, city, timezone, iiko_org_id, telegram_channel_id, monthly_video_budget, monthly_image_budget)
 values (
   'c0a00000-0000-0000-0000-000000000001',
-  'pilot-gastrodvor',
-  'Гастродвор',
+  'hungry-club-yalta',
+  'Hungry Club',
   'Ялта',
   'Europe/Moscow',
   null, -- fill after obtaining iiko org id
@@ -121,6 +121,15 @@ insert into brand_guidelines (restaurant_id, section, content, version, is_activ
 - В чём особенность
 ', 1, true);
 
--- Seed sample menu items (empty until iiko sync)
--- insert into menu_items (restaurant_id, name, category, description, price, is_hero, margin_class)
--- values ('c0a00000-0000-0000-0000-000000000001', 'Салат Цезарь', 'Салаты', 'Классический цезарь с куриной грудкой', 650, true, 'high');
+-- Seed menu items from hungry.club website (fill manually or via iiko sync)
+-- insert into menu_items (restaurant_id, iiko_product_id, name, category, description, price, is_hero, margin_class) values
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Чизбургер', 'Бургеры', 'Классический чизбургер с говяжьей котлетой', 330, false, 'medium'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Гамбургер', 'Бургеры', 'Классический гамбургер', 320, false, 'medium'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Бургер фирменный', 'Бургеры', 'Фирменный бургер с мраморной говядиной и томлёным луком', 680, true, 'high'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Биг Смэш Бургер', 'Бургеры', 'Двойной смэш-бургер', 720, true, 'high'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Камамбер и пряная груша', 'Бургеры', 'Гурманский бургер с камамбером и пряной грушей', 750, true, 'high'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Неряхо Джо', 'Бургеры', 'Сочный бургер с двойной котлетой', 590, false, 'medium'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Супер Чиз с Камамбером', 'Бургеры', 'Сырный бургер с камамбером', 690, false, 'high'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Трюфельный с грибами', 'Бургеры', 'Премиальный бургер с трюфельным соусом и грибами', 760, true, 'high'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Хангри Классик', 'Бургеры', 'Классический бургер Hungry Club', 580, false, 'medium'),
+-- ('c0a00000-0000-0000-0000-000000000001', null, 'Чеддерчиз', 'Бургеры', 'Бургер с двойным чеддером', 760, true, 'high');
