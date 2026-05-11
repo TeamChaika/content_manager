@@ -1,0 +1,130 @@
+{
+  "name": "Strategist: Generate Plan",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-plan",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-plan",
+      "name": "Webhook (receive context)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{ $env.OPENROUTER_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "HTTP-Referer", "value": "https://hungry.club" },
+            { "name": "X-Title", "value": "Hungry Club Content AI" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"anthropic/claude-sonnet-4.5\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{{ $node['code-build-prompt'].json.system_prompt }}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $node['code-build-prompt'].json.user_prompt }}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 8192,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "openrouter-call",
+      "name": "OpenRouter: Call Claude Sonnet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Load system prompt placeholder\nconst systemPrompt = `Ты — стратег по контенту для ресторана \"Hungry Club\" в Ялте.\nТвоя задача — составить контент-план на 14 дней.\n\n## Контекст бренда\n\n**Кто мы:** Сервис доставки еды ресторанного качества. Более 16 категорий блюд.\n**Tone of Voice:** на «ты», дружелюбно-энергичный. Короткие фразы. Эмодзи приветствуются.\n**Табу:** не используем «вкусно», «уютная атмосфера», «команда профессионалов».\n**Флагманы:** Бургер фирменный (680₽), Трюфельный (760₽), Камамбер и груша (750₽).\n\n## ЖЁСТКИЕ ПРАВИЛА\n1. Каждый день: 1 пост + 1–3 сторис. Рилс — 2 раза в неделю.\n2. 40% еда, 20% атмосфера, 20% люди, 10% сторителлинг, 10% акции.\n3. Учитывай погоду: жарко → лимонады и доставка на пляж; дождливо → супы и уют.\n4. Учитывай iiko: что продаётся → пушим; что заканчивается → НЕ пушим.\n5. Учитывай праздники из календаря.\n6. Не повторяй темы из последних 20 постов.\n\nВЫХОД — строго JSON:\n{\n  \"plan_summary\": \"...\",\n  \"items\": [\n    {\n      \"date\": \"2026-05-15\",\n      \"format\": \"post\" | \"reel\" | \"story\",\n      \"topic\": \"...\",\n      \"goal\": \"promo\" | \"awareness\" | \"engagement\",\n      \"rationale\": \"...\",\n      \"key_message\": \"...\",\n      \"suggested_visual\": \"...\",\n      \"menu_item_hint\": \"...\"\n    }\n  ]\n}`;\n\nconst context = $input.first().json.body;\n\n// Build user prompt from context\nconst userPrompt = `## ЗАДАЧА\n\nСоставь контент-план для ресторана ${context.restaurant_name || 'Hungry Club'} (${context.restaurant_city || 'Ялта'}) на период ${context.period_start} – ${context.period_end} (14 дней).\n\n## ДАННЫЕ ДЛЯ РАБОТЫ\n\n### 1. Brand Guidelines\n${JSON.stringify(context.brand_guidelines, null, 2)}\n\n### 2. Прогноз погоды\n${JSON.stringify(context.weather, null, 2)}\n\n### 3. iiko-инсайты\n${context.iiko_insights || 'Нет данных iiko.'}\n\n### 4. Календарь праздников\n${JSON.stringify(context.holidays, null, 2)}\n\n### 5. Последние 20 постов (не повторять!)\n${JSON.stringify(context.recent_posts, null, 2)}\n\n${context.user_feedback ? '## ПРАВКИ ОТ УПРАВЛЯЮЩЕГО\\n\\n' + context.user_feedback : ''}`;\n\nreturn {\n  system_prompt: systemPrompt,\n  user_prompt: userPrompt,\n  context: context\n};"
+      },
+      "id": "code-build-prompt",
+      "name": "Code: Build Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices[0].message.content;\n\n// Strip markdown fences if present\nlet jsonStr = content;\njsonStr = jsonStr.replace(/```json\\n?/g, '').replace(/```/g, '').trim();\n\nlet plan;\ntry {\n  plan = JSON.parse(jsonStr);\n} catch (e) {\n  return { error: 'JSON parse failed', raw: content };\n}\n\n// Cost calculation: Claude Sonnet 4.5 = $3/M input, $15/M output\nconst inputCost = (response.usage.prompt_tokens / 1000000) * 3;\nconst outputCost = (response.usage.completion_tokens / 1000000) * 15;\n\nreturn {\n  plan: plan,\n  meta: {\n    model: response.model,\n    prompt_tokens: response.usage.prompt_tokens,\n    completion_tokens: response.usage.completion_tokens,\n    total_tokens: response.usage.total_tokens,\n    cost_usd: (inputCost + outputCost).toFixed(4),\n    plan_items: plan.items?.length || 0\n  }\n};"
+      },
+      "id": "code-parse",
+      "name": "Code: Parse Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO content_plans (\n  restaurant_id, period_start, period_end, status,\n  strategist_input, strategist_output\n) VALUES (\n  '{{ $node['code-parse'].json.context.restaurant_id }}',\n  '{{ $node['code-parse'].json.context.period_start }}'::date,\n  '{{ $node['code-parse'].json.context.period_end }}'::date,\n  'draft',\n  '{{ JSON.stringify($node['code-parse'].json.context) }}'::jsonb,\n  '{{ JSON.stringify($node['code-parse'].json.plan) }}'::jsonb\n)\nRETURNING id"
+      },
+      "id": "supabase-insert-plan",
+      "name": "Supabase: Insert Plan",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 250],
+      "credentials": {
+        "supabaseApi": "supabase-service-role"
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $node['code-parse'].json.plan.items || [];\nconst restaurantId = $node['code-parse'].json.context.restaurant_id;\nconst planId = $node['Supabase: Insert Plan'].json[0].id;\n\nconst queries = items.map(item => {\n  return `INSERT INTO content_items (\n  plan_id, restaurant_id, scheduled_date, format, topic, goal, status\n) VALUES (\n  '${planId}',\n  '${restaurantId}',\n  '${item.date}',\n  '${item.format}',\n  '${escapeSql(item.topic)}',\n  '${item.goal}',\n  'planned'\n)`;\n});\n\nfunction escapeSql(str) {\n  return (str || '').replace(/'/g, \"''\");\n}\n\nreturn { queries: queries, planId: planId };"
+      },
+      "id": "code-build-items",
+      "name": "Code: Build Item Inserts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 450]
+    },
+    {
+      "parameters": {
+        "respondWith": "json"
+      },
+      "id": "respond-plan",
+      "name": "Respond: Plan Created",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1500, 300]
+    }
+  ],
+  "connections": {
+    "Webhook (receive context)": {
+      "main": [[{ "node": "Code: Build Prompts", "type": "main", "index": 0 }]]
+    },
+    "Code: Build Prompts": {
+      "main": [[{ "node": "OpenRouter: Call Claude Sonnet", "type": "main", "index": 0 }]]
+    },
+    "OpenRouter: Call Claude Sonnet": {
+      "main": [[{ "node": "Code: Parse Response", "type": "main", "index": 0 }]]
+    },
+    "Code: Parse Response": {
+      "main": [
+        [{ "node": "Supabase: Insert Plan", "type": "main", "index": 0 }],
+        [{ "node": "Code: Build Item Inserts", "type": "main", "index": 0 }]
+      ]
+    },
+    "Supabase: Insert Plan": {
+      "main": [[{ "node": "Respond: Plan Created", "type": "main", "index": 0 }]]
+    },
+    "Code: Build Item Inserts": {
+      "main": [[{ "node": "Respond: Plan Created", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["strategist", "stage2", "openrouter"],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

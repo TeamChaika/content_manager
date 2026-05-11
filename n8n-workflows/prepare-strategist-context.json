@@ -1,0 +1,129 @@
+{
+  "name": "Strategist: Prepare Context",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "prepare-strategist-context",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-context",
+      "name": "Webhook (receive restaurant_id)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT section, content\nFROM brand_guidelines\nWHERE restaurant_id = '{{ $json.body.restaurant_id }}'\n  AND is_active = true\nORDER BY\n  CASE section\n    WHEN 'positioning' THEN 1\n    WHEN 'tone_of_voice' THEN 2\n    WHEN 'taboos' THEN 3\n    WHEN 'visual_style' THEN 4\n    WHEN 'menu_highlights' THEN 5\n  END"
+      },
+      "id": "supabase-brand-guidelines",
+      "name": "Supabase: Brand Guidelines",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [550, 250],
+      "credentials": {
+        "supabaseApi": "supabase-service-role"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  forecast_date::text AS date,\n  conditions,\n  temp_c,\n  precipitation_mm\nFROM weather_forecasts\nWHERE restaurant_id = '{{ $node[\\\"webhook-context\\\"].json.body.restaurant_id }}'\n  AND forecast_date >= CURRENT_DATE\n  AND forecast_date < CURRENT_DATE + INTERVAL '14 days'\nORDER BY forecast_date"
+      },
+      "id": "supabase-weather",
+      "name": "Supabase: Weather",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [550, 450],
+      "credentials": {
+        "supabaseApi": "supabase-service-role"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT insights\nFROM iiko_snapshots\nWHERE restaurant_id = '{{ $node[\\\"webhook-context\\\"].json.body.restaurant_id }}'\n  AND snapshot_date >= CURRENT_DATE - INTERVAL '7 days'\nORDER BY snapshot_date DESC\nLIMIT 1"
+      },
+      "id": "supabase-iiko",
+      "name": "Supabase: iiko Insights",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [550, 650],
+      "credentials": {
+        "supabaseApi": "supabase-service-role"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  ci.scheduled_date::text AS published_date,\n  ci.topic,\n  ci.format\nFROM content_items ci\nWHERE ci.restaurant_id = '{{ $node[\\\"webhook-context\\\"].json.body.restaurant_id }}'\n  AND ci.status = 'published'\nORDER BY ci.scheduled_date DESC\nLIMIT 20"
+      },
+      "id": "supabase-recent-posts",
+      "name": "Supabase: Recent Posts",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [550, 850],
+      "credentials": {
+        "supabaseApi": "supabase-service-role"
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const brandGuidelines = $input.all();\nconst weather = [];\nconst iiko = [];\nconst recentPosts = [];\n\n// Filter holidays for next 14 days\nconst holidays = [];\nconst start = new Date();\nconst end = new Date();\nend.setDate(end.getDate() + 14);\n\n// Hardcoded holidays - replace with file read\nconst allHolidays = [];\n\nconst result = {\n  restaurant_id: $input.first().json.body.restaurant_id,\n  restaurant_name: \"Hungry Club\",\n  restaurant_city: \"Ялта\",\n  period_start: start.toISOString().split('T')[0],\n  period_end: end.toISOString().split('T')[0],\n  brand_guidelines: brandGuidelines,\n  weather: weather,\n  iiko_insights: iiko[0]?.insights || null,\n  holidays: holidays,\n  recent_posts: recentPosts,\n  user_feedback: null,\n  previous_plan: null\n};\n\nreturn result;"
+      },
+      "id": "code-assemble",
+      "name": "Code: Assemble Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json"
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 500]
+    }
+  ],
+  "connections": {
+    "Webhook (receive restaurant_id)": {
+      "main": [
+        [
+          { "node": "Supabase: Brand Guidelines", "type": "main", "index": 0 },
+          { "node": "Supabase: Weather", "type": "main", "index": 0 },
+          { "node": "Supabase: iiko Insights", "type": "main", "index": 0 },
+          { "node": "Supabase: Recent Posts", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Supabase: Brand Guidelines": {
+      "main": [[{ "node": "Code: Assemble Context", "type": "main", "index": 0 }]]
+    },
+    "Supabase: Weather": {
+      "main": [[{ "node": "Code: Assemble Context", "type": "main", "index": 0 }]]
+    },
+    "Supabase: iiko Insights": {
+      "main": [[{ "node": "Code: Assemble Context", "type": "main", "index": 0 }]]
+    },
+    "Supabase: Recent Posts": {
+      "main": [[{ "node": "Code: Assemble Context", "type": "main", "index": 0 }]]
+    },
+    "Code: Assemble Context": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["strategist", "stage2"],
+  "pinData": {},
+  "versionId": "1.0.0"
+}
