@@ -11,14 +11,14 @@ import {
 import { RevisionButton } from "./revision-button";
 import { approvePlan, deleteItem } from "./actions";
 
-interface ContentItem {
-  id: string;
-  content_plan_id: string;
-  scheduled_date: string;
+interface JsonItem {
+  date: string;
   format: "post" | "reel" | "story";
   topic: string;
   goal: string;
   key_message: string;
+  suggested_visual?: string;
+  rationale?: string;
 }
 
 interface Plan {
@@ -26,9 +26,10 @@ interface Plan {
   restaurant_id: string;
   period_start: string;
   period_end: string;
-  status: "draft" | "pending_approval" | "approved" | "rejected";
+  status: "draft" | "pending_approval" | "approved" | "rejected" | "in_production";
   strategist_output: {
     plan_summary?: string;
+    items?: JsonItem[];
   } | null;
 }
 
@@ -87,11 +88,15 @@ export default async function PlanDetailPage({
 
   if (!plan) notFound();
 
-  const { data: items } = (await supabase
+  const { data: dbItems } = await supabase
     .from("content_items")
     .select("*")
-    .eq("content_plan_id", id)
-    .order("scheduled_date")) as { data: ContentItem[] | null };
+    .eq("plan_id", id)
+    .order("scheduled_date");
+
+  const jsonItems = (plan.strategist_output as any)?.items || [];
+  const items = dbItems && dbItems.length > 0 ? dbItems : jsonItems;
+  const isFromJson = dbItems?.length === 0;
 
   const status = statusMap[plan.status] ?? statusMap.draft;
 
@@ -157,7 +162,7 @@ export default async function PlanDetailPage({
       <div className="rounded-lg border border-gray-800 bg-card overflow-hidden">
         <div className="border-b border-gray-800 px-6 py-3">
           <h2 className="text-lg font-semibold text-white">
-            Материалы ({items?.length ?? 0})
+            Материалы ({Array.isArray(items) ? items.length : 0})
           </h2>
         </div>
 
@@ -167,9 +172,12 @@ export default async function PlanDetailPage({
           </div>
         ) : (
           <div className="divide-y divide-gray-800">
-            {items.map((item: ContentItem) => (
+            {items.map((item: any, idx: number) => {
+              const date = item.scheduled_date || item.date;
+              const msg = item.key_message || item.copy_text;
+              return (
               <div
-                key={item.id}
+                key={item.id || idx}
                 className="flex items-start gap-3 px-6 py-4 transition-colors hover:bg-card-hover group"
               >
                 <div className="mt-0.5 text-lg shrink-0">
@@ -178,33 +186,27 @@ export default async function PlanDetailPage({
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="inline-block rounded border-b border-dashed border-gray-600 px-1.5 py-0.5 text-sm font-medium text-white">
-                      {item.scheduled_date
-                        ? formatDate(item.scheduled_date)
-                        : "—"}
+                      {date ? formatDate(date) : "—"}
                     </span>
                     <span className="rounded bg-gray-800 px-1.5 py-0.5 text-xs text-gray-400">
                       {formatLabels[item.format] ?? item.format}
                     </span>
                   </div>
-                  <p className="inline-block rounded border-b border-dashed border-gray-600 px-1.5 py-0.5 text-sm font-medium text-brand">
+                  <p className="text-sm font-medium text-brand">
                     {item.topic || "Без темы"}
                   </p>
                   <p className="text-xs text-gray-400">
-                    <span className="text-gray-500">Цель:</span>{" "}
                     {item.goal || "—"}
                   </p>
-                  <p className="text-xs text-gray-500 leading-relaxed">
-                    <span className="text-gray-500">Ключевое:</span>{" "}
-                    {item.key_message || "—"}
-                  </p>
-                </div>
-                <form
-                  action={deleteItem.bind(
-                    null,
-                    item.id,
-                    plan.id,
-                    slug,
+                  {msg && (
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {msg}
+                    </p>
                   )}
+                </div>
+                {item.id && (
+                <form
+                  action={deleteItem.bind(null, item.id, plan.id, slug)}
                 >
                   <button
                     type="submit"
@@ -214,8 +216,9 @@ export default async function PlanDetailPage({
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </form>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
