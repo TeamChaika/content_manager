@@ -1,0 +1,12 @@
+{
+  "name": "content-ai",
+  "private": true,
+  "scripts": {
+    "build": "cd apps/web && npm install && npm run build",
+    "start": "cd apps/web && npm start",
+    "dev": "cd apps/web && npm run dev"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -212,36 +212,36 @@ export default async function PlanDetailPage({
                   )}
                 </div>
                 {item.id && (
-                <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0">
                   <form action={regenerateItem.bind(null, item.id, plan.id, slug)}>
                     <button
                       type="submit"
-                      className="rounded p-1 text-gray-600 transition-colors hover:bg-brand/10 hover:text-brand"
+                      className="rounded-lg px-2 py-1 text-xs font-medium text-amber-400 border border-amber-400/30 bg-amber-400/5 transition-colors hover:bg-amber-400/10 hover:border-amber-400/50"
                       title="Перегенерировать"
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </button>
                   </form>
                   <form action={deleteItem.bind(null, item.id, plan.id, slug)}>
                     <button
                       type="submit"
-                      className="rounded p-1 text-gray-600 transition-colors hover:bg-red-900/30 hover:text-red-400"
+                      className="rounded-lg px-2 py-1 text-xs font-medium text-red-400 border border-red-400/30 bg-red-400/5 transition-colors hover:bg-red-400/10 hover:border-red-400/50"
                       title="Удалить"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </form>
                 </div>
                 )}
                 {!item.id && (
-                <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 shrink-0">
                   <form action={regeneratePlan.bind(null, plan.id, slug)}>
                     <button
                       type="submit"
-                      className="rounded p-1 text-gray-600 transition-colors hover:bg-brand/10 hover:text-brand"
+                      className="rounded-lg px-2 py-1 text-xs font-medium text-amber-400 border border-amber-400/30 bg-amber-400/5 transition-colors hover:bg-amber-400/10"
                       title="Перегенерировать план"
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="h-3.5 w-3.5" />
                     </button>
                   </form>
                 </div>
