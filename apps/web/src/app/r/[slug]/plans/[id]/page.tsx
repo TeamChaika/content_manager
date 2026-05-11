@@ -6,10 +6,10 @@ import {
   Calendar,
   CheckCircle,
   Trash2,
-  PenLine,
+  RefreshCw,
 } from "lucide-react";
 import { RevisionButton } from "./revision-button";
-import { approvePlan, deleteItem } from "./actions";
+import { approvePlan, deleteItem, regeneratePlan, regenerateItem } from "./actions";
 
 interface JsonItem {
   date: string;
@@ -144,9 +144,7 @@ export default async function PlanDetailPage({
 
       {plan.status !== "approved" && (
         <div className="mb-6 flex flex-wrap gap-3">
-          <form
-            action={approvePlan.bind(null, plan.id, slug)}
-          >
+          <form action={approvePlan.bind(null, plan.id, slug)}>
             <button
               type="submit"
               className="inline-flex items-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-600"
@@ -156,6 +154,15 @@ export default async function PlanDetailPage({
             </button>
           </form>
           <RevisionButton planId={plan.id} slug={slug} />
+          <form action={regeneratePlan.bind(null, plan.id, slug)}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-600 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-800"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Перегенерировать план
+            </button>
+          </form>
         </div>
       )}
 
@@ -205,17 +212,39 @@ export default async function PlanDetailPage({
                   )}
                 </div>
                 {item.id && (
-                <form
-                  action={deleteItem.bind(null, item.id, plan.id, slug)}
-                >
-                  <button
-                    type="submit"
-                    className="rounded p-1 text-gray-600 transition-colors hover:bg-red-900/30 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                    title="Удалить"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </form>
+                <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <form action={regenerateItem.bind(null, item.id, plan.id, slug)}>
+                    <button
+                      type="submit"
+                      className="rounded p-1 text-gray-600 transition-colors hover:bg-brand/10 hover:text-brand"
+                      title="Перегенерировать"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  </form>
+                  <form action={deleteItem.bind(null, item.id, plan.id, slug)}>
+                    <button
+                      type="submit"
+                      className="rounded p-1 text-gray-600 transition-colors hover:bg-red-900/30 hover:text-red-400"
+                      title="Удалить"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </form>
+                </div>
+                )}
+                {!item.id && (
+                <div className="flex flex-col gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <form action={regeneratePlan.bind(null, plan.id, slug)}>
+                    <button
+                      type="submit"
+                      className="rounded p-1 text-gray-600 transition-colors hover:bg-brand/10 hover:text-brand"
+                      title="Перегенерировать план"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  </form>
+                </div>
                 )}
               </div>
             )})}
