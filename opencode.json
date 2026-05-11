@@ -1,6 +1,14 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
+    "timeweb": {
+      "type": "local",
+      "command": ["npx", "timeweb-mcp-server"],
+      "enabled": true,
+      "environment": {
+        "TIMEWEB_TOKEN": "{env:TIMEWEB_TOKEN}"
+      }
+    },
     "context7": {
       "type": "remote",
       "url": "https://mcp.context7.com/mcp"
